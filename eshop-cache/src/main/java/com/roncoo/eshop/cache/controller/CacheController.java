@@ -35,8 +35,7 @@ public class CacheController {
     /* ============================================================================  */
 
 
-    @RequestMapping("/getProductInfo")
-    @ResponseBody
+    @GetMapping("/getProductInfo")
     public ProductInfo getProductInfo(Long productId) {
         ProductInfo productInfo;
 
@@ -55,8 +54,7 @@ public class CacheController {
         return productInfo;
     }
 
-    @RequestMapping("/getShopInfo")
-    @ResponseBody
+    @GetMapping("/getShopInfo")
     public ShopInfo getShopInfo(Long shopId) {
         ShopInfo shopInfo;
 

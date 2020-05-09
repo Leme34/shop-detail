@@ -39,7 +39,7 @@ public class CacheServiceImpl implements CacheService {
     @Cacheable(value = CACHE_NAME, key = "'key_'+#id")
     public ProductInfo getLocalCache(Long id) {
         //若未命中缓存则返回此返回值
-        return new ProductInfo(-1L, null, null);
+        return null;
     }
 
 

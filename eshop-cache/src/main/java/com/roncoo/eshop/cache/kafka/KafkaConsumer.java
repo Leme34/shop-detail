@@ -14,6 +14,8 @@ import javax.annotation.Resource;
 /**
  * Kafka消息监听器
  * <p>
+ * 异步构建缓存测试接口见 {@link com.roncoo.eshop.cache.controller.KafkaController}
+ * <p>
  * Created by lsd
  * 2020-05-08 22:13
  */
@@ -21,10 +23,12 @@ import javax.annotation.Resource;
 @Component
 public class KafkaConsumer {
 
+    public final static String CACHE_TOPIC = "cache-message";
+
     @Resource
     private CacheService cacheService;
 
-    @KafkaListener(topics = "cache-message")
+    @KafkaListener(topics = CACHE_TOPIC)
     public void handlerMessage(String message) {
         // 首先将message转换成json对象
         JSONObject msgJSONObject = JSONObject.parseObject(message);
@@ -61,6 +65,7 @@ public class KafkaConsumer {
         cacheService.saveProductInfo2LocalCache(productInfo);
         log.debug("已保存到本地缓存的商品信息：{}", cacheService.getProductInfoFromLocalCache(productId));
         cacheService.saveProductInfo2RedisCache(productInfo);
+        log.debug("已保存到Redis的商品信息：{}", cacheService.getProductInfoFromLocalCache(productId));
     }
 
     /**
@@ -79,6 +84,7 @@ public class KafkaConsumer {
         cacheService.saveShopInfo2LocalCache(shopInfo);
         log.debug("已保存到本地缓存的店铺信息：{}", cacheService.getShopInfoFromLocalCache(shopId));
         cacheService.saveShopInfo2RedisCache(shopInfo);
+        log.debug("已保存到Redis的店铺信息：{}", cacheService.getShopInfoFromLocalCache(shopId));
     }
 
 
