@@ -4,7 +4,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.model.ShopInfo;
 import com.roncoo.eshop.cache.service.CacheService;
-import com.roncoo.eshop.cache.task.RebuildCacheQueue;
+import com.roncoo.eshop.cache.task.RebuildProductCacheQueue;
+import com.roncoo.eshop.cache.task.RebuildShopCacheQueue;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +58,7 @@ public class CacheController {
             String productInfoJSON = "{\"id\": 2, \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
             productInfo = JSONObject.parseObject(productInfoJSON, ProductInfo.class);
             // 放入缓存重建队列
-            RebuildCacheQueue.getInstance().putProductInfo(productInfo);
+            RebuildProductCacheQueue.getInstance().putProductInfo(productInfo);
             log.debug("缓存都未命中，重建缓存，从数据库重新读取的商品信息={}", productInfo);
         }
 
@@ -80,7 +81,12 @@ public class CacheController {
 
         // 3 若缓存都未命中，则需要从数据库重新读数据，并重建缓存
         if (shopInfo == null) {
-            // TODO
+            // 模拟数据库查询返回的结果
+            String shopInfoJSON = "{\"id\": 2, \"name\": \"老王的手机店\", \"level\": 5, \"goodCommentRate\":0.99, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
+            shopInfo = JSONObject.parseObject(shopInfoJSON, ShopInfo.class);
+            // 放入缓存重建队列
+            RebuildShopCacheQueue.getInstance().putShopInfo(shopInfo);
+            log.debug("缓存都未命中，重建缓存，从数据库重新读取的店铺信息={}", shopInfo);
         }
 
         return shopInfo;

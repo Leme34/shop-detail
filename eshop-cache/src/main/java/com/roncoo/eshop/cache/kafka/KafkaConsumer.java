@@ -72,7 +72,7 @@ public class KafkaConsumer {
         log.debug("商品信息已保存到本地ehcache缓存，productId={}", productId);
 
         // 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
-        this.saveRedisCache(productInfo);
+        this.saveProductInfoRedisCache(productInfo);
     }
 
 
@@ -81,11 +81,11 @@ public class KafkaConsumer {
      *
      * @param productInfo 商品信息
      */
-    private void saveRedisCache(ProductInfo productInfo) {
+    private void saveProductInfoRedisCache(ProductInfo productInfo) {
         Long productId = productInfo.getId();
         ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
         try {
-            distributedLock.acquireDistributedLock(productId);
+            distributedLock.acquireDistributedLock(productId, 0);
             // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
             ProductInfo oldProductInfo = cacheService.getProductInfoFromRedisCache(productId);
             if (oldProductInfo != null && oldProductInfo.getModifiedTime() != null) {
@@ -104,7 +104,7 @@ public class KafkaConsumer {
         } catch (Exception e) {
             log.error("商品信息保存到Redis失败", e);
         } finally {
-            distributedLock.releaseDistributedLock(productId);
+            distributedLock.releaseDistributedLock(productId, 0);
         }
     }
 
@@ -119,13 +119,45 @@ public class KafkaConsumer {
 
         // 调用店铺信息服务的接口，例如：getShopInfo?shopId=1
         // 店铺信息服务一般来说会去查询数据库，获取此shopId的店铺信息，然后返回回来
-        String shopInfoJSON = "{\"id\": 1, \"name\": \"老王的手机店\", \"level\": 5, \"goodCommentRate\":0.99}";
+        String shopInfoJSON = "{\"id\": 2, \"name\": \"老王的手机店\", \"level\": 5, \"goodCommentRate\":0.99}, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
         ShopInfo shopInfo = JSONObject.parseObject(shopInfoJSON, ShopInfo.class);
         cacheService.saveShopInfo2LocalCache(shopInfo);
-        log.debug("店铺信息已保存到本地缓存，shopId={}", shopId);
-        cacheService.saveShopInfo2RedisCache(shopInfo);
-        log.debug("店铺信息已保存到Redis，shopId={}", shopId);
+        log.debug("店铺信息已保存到本地ehcache缓存，shopId={}", shopId);
+        // 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
+        this.saveShopInfoRedisCache(shopInfo);
     }
 
+
+    /**
+     * 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
+     *
+     * @param shopInfo 店铺信息
+     */
+    private void saveShopInfoRedisCache(ShopInfo shopInfo) {
+        Long shopId = shopInfo.getId();
+        ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
+        try {
+            distributedLock.acquireDistributedLock(shopId, 1);
+            // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
+            ShopInfo oldShopInfo = cacheService.getShopInfoFromRedisCache(shopId);
+            if (oldShopInfo != null && oldShopInfo.getModifiedTime() != null) {
+                SimpleDateFormat sdf = DATE_TIME_FORMATTER.get();
+                Date date = sdf.parse(shopInfo.getModifiedTime());
+                Date oldDate = sdf.parse(oldShopInfo.getModifiedTime());
+                if (date.before(oldDate)) {
+                    log.debug("缓存版本号比对结果：current date[{}] is before existed date[{}]，不更新Redis缓存", shopInfo.getModifiedTime(), oldDate);
+                    return;
+                }
+                log.debug("缓存版本号比对结果：current date[{}] is after existed date[{}]，更新Redis缓存", shopInfo.getModifiedTime(), oldDate);
+            }
+            // 放入Redis缓存
+            cacheService.saveShopInfo2RedisCache(shopInfo);
+            log.debug("店铺信息已保存到Redis，shopId={}", shopId);
+        } catch (Exception e) {
+            log.error("店铺信息保存到Redis失败", e);
+        } finally {
+            distributedLock.releaseDistributedLock(shopId, 1);
+        }
+    }
 
 }

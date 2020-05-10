@@ -5,9 +5,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import com.roncoo.eshop.cache.model.ProductInfo;
 
 /**
- * 重建缓存的内存队列
+ * 重建商品缓存的内存队列
  */
-public class RebuildCacheQueue {
+public class RebuildProductCacheQueue {
 
     private ArrayBlockingQueue<ProductInfo> queue = new ArrayBlockingQueue<>(1000);
 
@@ -33,19 +33,19 @@ public class RebuildCacheQueue {
      */
     private static class Singleton {
 
-        private static RebuildCacheQueue instance;
+        private static RebuildProductCacheQueue instance;
 
         static {
-            instance = new RebuildCacheQueue();
+            instance = new RebuildProductCacheQueue();
         }
 
-        public static RebuildCacheQueue getInstance() {
+        public static RebuildProductCacheQueue getInstance() {
             return instance;
         }
 
     }
 
-    public static RebuildCacheQueue getInstance() {
+    public static RebuildProductCacheQueue getInstance() {
         return Singleton.getInstance();
     }
 

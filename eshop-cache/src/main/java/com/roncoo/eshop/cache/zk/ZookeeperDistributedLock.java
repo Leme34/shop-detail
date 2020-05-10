@@ -80,28 +80,29 @@ public class ZookeeperDistributedLock {
     /**
      * 自旋获取分布式锁，获取失败会每隔200ms进行重试，直到成功获得锁
      *
-     * @param productId 商品id
+     * @param id     商品/店铺id
+     * @param idType 商品：0，店铺：1
      */
-    public void acquireDistributedLock(Long productId) {
-        String path = getLockPath(productId);
+    public void acquireDistributedLock(Long id, Integer idType) {
+        String lockPath = getLockPath(id, idType);
         // 创建临时节点，默认acl权限
         try {
-            zooKeeper.create(path, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-            log.debug("成功获取分布式锁，productId={}", productId);
+            zooKeeper.create(lockPath, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+            log.debug("成功获取分布式锁，lockPath={}", lockPath);
         } catch (Exception e) {  //每隔200ms进行重试，直到成功获得锁
-            log.debug("获取分布式锁失败，productId={}，原因:{}", productId, e.getMessage());
+            log.debug("获取分布式锁失败，lockPath={}，原因:{}", lockPath, e.getMessage());
             int count = 0;
             while (true) {
                 try {
                     TimeUnit.MILLISECONDS.sleep(200);
-                    zooKeeper.create(path, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+                    zooKeeper.create(lockPath, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
                 } catch (Exception ex) {
-                    log.debug("获取分布式锁失败，productId={}，原因:{}", productId, e.getMessage());
+                    log.debug("获取分布式锁失败，lockPath={}，原因:{}", lockPath, e.getMessage());
                     count++;
                     continue;
                 }
                 // 没抛异常则成功
-                log.debug("获取分布式锁成功，productId={}，已重试次数:{}", productId, count);
+                log.debug("获取分布式锁成功，lockPath={}，已重试次数:{}", lockPath, count);
                 break;
             }
         }
@@ -111,17 +112,18 @@ public class ZookeeperDistributedLock {
     /**
      * 释放分布式锁
      *
-     * @param productId 商品id
+     * @param id     商品/店铺id
+     * @param idType 商品：0，店铺：1
      */
-    public boolean releaseDistributedLock(Long productId) {
-        String path = getLockPath(productId);
+    public boolean releaseDistributedLock(Long id, Integer idType) {
+        String lockPath = getLockPath(id, idType);
         try {
-            zooKeeper.delete(path, -1);
-            log.debug("分布式锁释放成功，productId={}", productId);
+            zooKeeper.delete(lockPath, -1);
+            log.debug("分布式锁释放成功，lockPath={}", lockPath);
             return true;
         } catch (Exception e) {
             if (e instanceof KeeperException.NoNodeException) {
-                log.error("分布式锁节点不存在，productId=" + productId, e);
+                log.error("分布式锁节点不存在，lockPath=" + lockPath, e);
                 return true;
             }
             log.error("分布式锁释放失败", e);
@@ -129,8 +131,26 @@ public class ZookeeperDistributedLock {
         }
     }
 
-    private String getLockPath(Long productId) {
-        return "/product-lock-" + productId;
+    /**
+     * 获取锁定目录
+     *
+     * @param id     商品/店铺id
+     * @param idType 商品：0，店铺：1
+     * @return
+     */
+    private String getLockPath(Long id, Integer idType) {
+        String basePath;
+        switch (idType) {
+            case 0:
+                basePath = "/product-lock-";
+                break;
+            case 1:
+                basePath = "/shop-lock-";
+                break;
+            default:
+                basePath = "/default-lock-";
+        }
+        return basePath + id;
     }
 
 }

@@ -10,27 +10,27 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * 缓存重建任务
+ * 商品缓存重建任务
  */
 @Slf4j
-public class RebuildCacheTask implements Runnable {
+public class RebuildProductCacheTask implements Runnable {
 
     private final static ThreadLocal<SimpleDateFormat> DATE_TIME_FORMATTER = ThreadLocal.withInitial(
             () -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     );
 
     public void run() {
-        RebuildCacheQueue rebuildCacheQueue = RebuildCacheQueue.getInstance();
+        RebuildProductCacheQueue rebuildProductCacheQueue = RebuildProductCacheQueue.getInstance();
         ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
         CacheService cacheService = (CacheService) SpringContextUtils.getBean("cacheService");
 
         // 一直消费队列中的请求
         while (true) {
-            ProductInfo productInfo = rebuildCacheQueue.takeProductInfo();
+            ProductInfo productInfo = rebuildProductCacheQueue.takeProductInfo();
             Long productId = productInfo.getId();
             try {
                 // 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
-                distributedLock.acquireDistributedLock(productId);
+                distributedLock.acquireDistributedLock(productId,0);
                 ProductInfo oldProductInfo = cacheService.getProductInfoFromRedisCache(productId);
 
                 // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
@@ -54,7 +54,7 @@ public class RebuildCacheTask implements Runnable {
             } catch (Exception e) {
                 log.error("商品信息缓存重建失败", e);
             } finally {
-                distributedLock.releaseDistributedLock(productInfo.getId());
+                distributedLock.releaseDistributedLock(productInfo.getId(),0);
             }
         }
     }

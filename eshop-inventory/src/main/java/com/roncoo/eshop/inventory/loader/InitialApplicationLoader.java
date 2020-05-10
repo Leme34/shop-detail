@@ -1,4 +1,4 @@
-package com.roncoo.eshop.inventory.listener;
+package com.roncoo.eshop.inventory.loader;
 
 import com.roncoo.eshop.inventory.requestprocessor.RequestProcessorThreadPool;
 import org.springframework.context.ApplicationListener;
