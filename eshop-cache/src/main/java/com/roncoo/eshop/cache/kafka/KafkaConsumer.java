@@ -4,12 +4,14 @@ import com.alibaba.fastjson.JSONObject;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.model.ShopInfo;
 import com.roncoo.eshop.cache.service.CacheService;
+import com.roncoo.eshop.cache.zk.ZookeeperDistributedLock;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Kafka消息监听器
@@ -24,6 +26,9 @@ import javax.annotation.Resource;
 public class KafkaConsumer {
 
     public final static String CACHE_TOPIC = "cache-message";
+    private final static ThreadLocal<SimpleDateFormat> DATE_TIME_FORMATTER = ThreadLocal.withInitial(
+            () -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    );
 
     @Resource
     private CacheService cacheService;
@@ -60,12 +65,47 @@ public class KafkaConsumer {
 
         // 调用商品信息服务的接口，例如：getProductInfo?productId=1
         // 商品信息服务一般来说会去查询数据库，获取此productId的商品信息，然后返回回来
-        String productInfoJSON = "{\"id\": 1, \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1}";
+        // modifiedTime字段是缓存版本号标识，用于结合分布式锁解决并发重建缓存冲突问题
+        String productInfoJSON = "{\"id\": 2, \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
         ProductInfo productInfo = JSONObject.parseObject(productInfoJSON, ProductInfo.class);
         cacheService.saveProductInfo2LocalCache(productInfo);
-        log.debug("已保存到本地缓存的商品信息：{}", cacheService.getProductInfoFromLocalCache(productId));
-        cacheService.saveProductInfo2RedisCache(productInfo);
-        log.debug("已保存到Redis的商品信息：{}", cacheService.getProductInfoFromLocalCache(productId));
+        log.debug("商品信息已保存到本地ehcache缓存，productId={}", productId);
+
+        // 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
+        this.saveRedisCache(productInfo);
+    }
+
+
+    /**
+     * 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
+     *
+     * @param productInfo 商品信息
+     */
+    private void saveRedisCache(ProductInfo productInfo) {
+        Long productId = productInfo.getId();
+        ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
+        try {
+            distributedLock.acquireDistributedLock(productId);
+            // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
+            ProductInfo oldProductInfo = cacheService.getProductInfoFromRedisCache(productId);
+            if (oldProductInfo != null && oldProductInfo.getModifiedTime() != null) {
+                SimpleDateFormat sdf = DATE_TIME_FORMATTER.get();
+                Date date = sdf.parse(productInfo.getModifiedTime());
+                Date oldDate = sdf.parse(oldProductInfo.getModifiedTime());
+                if (date.before(oldDate)) {
+                    log.debug("缓存版本号比对结果：current date[{}] is before existed date[{}]，不更新Redis缓存", productInfo.getModifiedTime(), oldDate);
+                    return;
+                }
+                log.debug("缓存版本号比对结果：current date[{}] is after existed date[{}]，更新Redis缓存", productInfo.getModifiedTime(), oldDate);
+            }
+            // 放入Redis缓存
+            cacheService.saveProductInfo2RedisCache(productInfo);
+            log.debug("商品信息已保存到Redis，productId={}", productId);
+        } catch (Exception e) {
+            log.error("商品信息保存到Redis失败", e);
+        } finally {
+            distributedLock.releaseDistributedLock(productId);
+        }
     }
 
     /**
@@ -82,9 +122,9 @@ public class KafkaConsumer {
         String shopInfoJSON = "{\"id\": 1, \"name\": \"老王的手机店\", \"level\": 5, \"goodCommentRate\":0.99}";
         ShopInfo shopInfo = JSONObject.parseObject(shopInfoJSON, ShopInfo.class);
         cacheService.saveShopInfo2LocalCache(shopInfo);
-        log.debug("已保存到本地缓存的店铺信息：{}", cacheService.getShopInfoFromLocalCache(shopId));
+        log.debug("店铺信息已保存到本地缓存，shopId={}", shopId);
         cacheService.saveShopInfo2RedisCache(shopInfo);
-        log.debug("已保存到Redis的店铺信息：{}", cacheService.getShopInfoFromLocalCache(shopId));
+        log.debug("店铺信息已保存到Redis，shopId={}", shopId);
     }
 
 

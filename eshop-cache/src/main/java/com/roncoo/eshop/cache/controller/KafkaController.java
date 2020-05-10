@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 
-@Api(tags = "Kafka消息测试Controller", value = "发送Kafka消息异步加载Redis缓存")
+@Api(tags = "Kafka消息测试接口", value = "发送Kafka消息异步加载Redis缓存")
 @RestController
 @Slf4j
 public class KafkaController {
@@ -20,22 +20,22 @@ public class KafkaController {
     @Resource
     private KafkaTemplate<String, String> kafkaTemplate;
 
-    @ApiOperation("发送商品信息服务消息")
-    @PostMapping("/sendProductInfoMsg")
-    public String sendProductInfoMsg() {
+    @ApiOperation("发送更新商品信息服务消息")
+    @GetMapping("/sendProductInfoMsg")
+    public String sendProductInfoMsg(@RequestParam Integer productId) {
         kafkaTemplate.send(
                 KafkaConsumer.CACHE_TOPIC,
-                "{\"serviceId\": \"productInfoService\",\"productId\": 1}"
+                "{\"serviceId\": \"productInfoService\",\"productId\": " + productId + "}"
         );
         return "success";
     }
 
-    @ApiOperation("发送店铺信息服务消息")
+    @ApiOperation("发送更新店铺信息服务消息")
     @PostMapping("/sendShopInfoMsg")
-    public String sendShopInfoMsg() {
+    public String sendShopInfoMsg(@RequestParam Integer shopId) {
         kafkaTemplate.send(
                 KafkaConsumer.CACHE_TOPIC,
-                "{\"serviceId\": \"shopInfoService\",\"shopId\": 1}"
+                "{\"serviceId\": \"shopInfoService\",\"shopId\": " + shopId + "}"
         );
         return "success";
     }

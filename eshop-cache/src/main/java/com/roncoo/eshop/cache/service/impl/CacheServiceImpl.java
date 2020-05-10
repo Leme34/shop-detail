@@ -2,6 +2,7 @@ package com.roncoo.eshop.cache.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.roncoo.eshop.cache.model.ShopInfo;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -102,7 +103,8 @@ public class CacheServiceImpl implements CacheService {
     public ProductInfo getProductInfoFromRedisCache(Long productId) {
         String key = "product_info_" + productId;
         String json = jedisCluster.get(key);
-        return JSONObject.parseObject(json, ProductInfo.class);
+        return (StringUtils.isBlank(json) || StringUtils.equalsIgnoreCase(json, "null")) ? null :
+                JSONObject.parseObject(json, ProductInfo.class);
     }
 
     /**
@@ -111,7 +113,8 @@ public class CacheServiceImpl implements CacheService {
     public ShopInfo getShopInfoFromRedisCache(Long shopId) {
         String key = "shop_info_" + shopId;
         String json = jedisCluster.get(key);
-        return JSONObject.parseObject(json, ShopInfo.class);
+        return (StringUtils.isBlank(json) || StringUtils.equalsIgnoreCase(json, "null")) ? null :
+                JSONObject.parseObject(json, ShopInfo.class);
     }
 
 }

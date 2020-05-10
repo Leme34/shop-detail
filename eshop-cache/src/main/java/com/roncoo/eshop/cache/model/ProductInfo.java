@@ -22,4 +22,6 @@ public class ProductInfo {
     private String size;
     private Long shopId;
 
+    //缓存版本号标识，用于结合分布式锁解决并发重建缓存冲突问题
+    private String modifiedTime;
 }
