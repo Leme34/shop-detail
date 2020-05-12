@@ -102,11 +102,13 @@ public class ProductCountBolt extends BaseRichBolt {
                             .map(Map.Entry::getKey)
                             .collect(Collectors.toList());
                     String topNProductIdsJSON = JSONArray.toJSONString(topNProductIds);
+                    // 更新自己的taskid对应的热门商品列表
                     String thisTaskPath = ProductCountBolt.getTopN4ThisTaskPath(taskid);
                     zkUtils.createNode(thisTaskPath);
                     zkUtils.setNodeData(thisTaskPath, topNProductIdsJSON);
                     log.info("当前task统计的topN结果为:{}", topNProductIdsJSON);
-
+                    // 清除此task的热门商品列表是否已被预热的标记节点
+                    zkUtils.deleteNode("/taskid-status-" + taskid);
                     // 休眠1分钟
                     Utils.sleep(60000);
                 } catch (Exception e) {

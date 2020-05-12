@@ -178,4 +178,22 @@ public class ZookeeperUtils {
         }
     }
 
+    /**
+     * 删除节点
+     */
+    public boolean deleteNode(String path) {
+        try {
+            zooKeeper.delete(path, -1);
+            log.info("zookeeper节点删除成功，path={}", path);
+            return true;
+        } catch (Exception e) {
+            if (e instanceof KeeperException.NodeExistsException) {
+                log.info("zookeeper节点不存在，忽略本次删除操作，path={}", path);
+                return true;
+            }
+            log.error("zookeeper节点删除失败", e);
+            return false;
+        }
+    }
+
 }
