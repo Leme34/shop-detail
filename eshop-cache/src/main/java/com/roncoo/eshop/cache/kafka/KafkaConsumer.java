@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.model.ShopInfo;
 import com.roncoo.eshop.cache.service.CacheService;
-import com.roncoo.eshop.cache.zk.ZookeeperDistributedLock;
+import com.roncoo.eshop.cache.utils.ZookeeperUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -83,9 +83,9 @@ public class KafkaConsumer {
      */
     private void saveProductInfoRedisCache(ProductInfo productInfo) {
         Long productId = productInfo.getId();
-        ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
+        ZookeeperUtils zkUtils = ZookeeperUtils.getInstance();
         try {
-            distributedLock.acquireDistributedLock(productId, 0);
+            zkUtils.acquireDistributedLock(this.getLockPath(productId, 0));
             // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
             ProductInfo oldProductInfo = cacheService.getProductInfoFromRedisCache(productId);
             if (oldProductInfo != null && oldProductInfo.getModifiedTime() != null) {
@@ -104,7 +104,7 @@ public class KafkaConsumer {
         } catch (Exception e) {
             log.error("商品信息保存到Redis失败", e);
         } finally {
-            distributedLock.releaseDistributedLock(productId, 0);
+            zkUtils.releaseDistributedLock(this.getLockPath(productId, 0));
         }
     }
 
@@ -135,9 +135,9 @@ public class KafkaConsumer {
      */
     private void saveShopInfoRedisCache(ShopInfo shopInfo) {
         Long shopId = shopInfo.getId();
-        ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
+        ZookeeperUtils zkUtils = ZookeeperUtils.getInstance();
         try {
-            distributedLock.acquireDistributedLock(shopId, 1);
+            zkUtils.acquireDistributedLock(this.getLockPath(shopId, 1));
             // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
             ShopInfo oldShopInfo = cacheService.getShopInfoFromRedisCache(shopId);
             if (oldShopInfo != null && oldShopInfo.getModifiedTime() != null) {
@@ -156,8 +156,31 @@ public class KafkaConsumer {
         } catch (Exception e) {
             log.error("店铺信息保存到Redis失败", e);
         } finally {
-            distributedLock.releaseDistributedLock(shopId, 1);
+            zkUtils.releaseDistributedLock(this.getLockPath(shopId, 1));
         }
+    }
+
+
+    /**
+     * 获取分布式锁的锁定目录
+     *
+     * @param id     商品/店铺id
+     * @param idType 商品：0，店铺：1
+     * @return
+     */
+    private String getLockPath(Long id, Integer idType) {
+        String basePath;
+        switch (idType) {
+            case 0:
+                basePath = "/product-lock-";
+                break;
+            case 1:
+                basePath = "/shop-lock-";
+                break;
+            default:
+                basePath = "/default-lock-";
+        }
+        return basePath + id;
     }
 
 }

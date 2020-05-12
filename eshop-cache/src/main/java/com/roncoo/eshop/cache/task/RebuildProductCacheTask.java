@@ -3,7 +3,7 @@ package com.roncoo.eshop.cache.task;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.service.CacheService;
 import com.roncoo.eshop.cache.utils.SpringContextUtils;
-import com.roncoo.eshop.cache.zk.ZookeeperDistributedLock;
+import com.roncoo.eshop.cache.utils.ZookeeperUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.text.SimpleDateFormat;
@@ -21,7 +21,7 @@ public class RebuildProductCacheTask implements Runnable {
 
     public void run() {
         RebuildProductCacheQueue rebuildProductCacheQueue = RebuildProductCacheQueue.getInstance();
-        ZookeeperDistributedLock distributedLock = ZookeeperDistributedLock.getInstance();
+        ZookeeperUtils zkUtils = ZookeeperUtils.getInstance();
         CacheService cacheService = (CacheService) SpringContextUtils.getBean("cacheService");
 
         // 一直消费队列中的请求
@@ -30,7 +30,7 @@ public class RebuildProductCacheTask implements Runnable {
             Long productId = productInfo.getId();
             try {
                 // 先获取分布式锁，再比对缓存版本号，若是最新数据才放入Redis缓存
-                distributedLock.acquireDistributedLock(productId,0);
+                zkUtils.acquireDistributedLock(this.getLockPath(productId));
                 ProductInfo oldProductInfo = cacheService.getProductInfoFromRedisCache(productId);
 
                 // 比较当前数据的时间版本比已有数据的时间版本是新还是旧
@@ -54,10 +54,19 @@ public class RebuildProductCacheTask implements Runnable {
             } catch (Exception e) {
                 log.error("商品信息缓存重建失败", e);
             } finally {
-                distributedLock.releaseDistributedLock(productInfo.getId(),0);
+                zkUtils.releaseDistributedLock(this.getLockPath(productInfo.getId()));
             }
         }
     }
 
+
+    /**
+     * 获取分布式锁的锁定目录
+     *
+     * @param id 商品id
+     */
+    private String getLockPath(Long id) {
+        return "/product-lock-" + id;
+    }
 
 }

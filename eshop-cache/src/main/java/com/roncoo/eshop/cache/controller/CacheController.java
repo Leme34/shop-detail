@@ -3,6 +3,7 @@ package com.roncoo.eshop.cache.controller;
 import com.alibaba.fastjson.JSONObject;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.model.ShopInfo;
+import com.roncoo.eshop.cache.prewarm.CachePrewarmTask;
 import com.roncoo.eshop.cache.service.CacheService;
 import com.roncoo.eshop.cache.task.RebuildProductCacheQueue;
 import com.roncoo.eshop.cache.task.RebuildShopCacheQueue;
@@ -44,18 +45,18 @@ public class CacheController {
         ProductInfo productInfo;
         // 1 先查询Redis缓存
         productInfo = cacheService.getProductInfoFromRedisCache(productId);
-        log.debug("从redis中获取缓存，商品信息={}", productInfo);
+        log.debug("从redis中获取到的商品信息={}", productInfo);
 
         // 2 未命中Redis缓存，再查询本地ehcache缓存
         if (productInfo == null) {
             productInfo = cacheService.getProductInfoFromLocalCache(productId);
-            log.debug("从ehcache中获取缓存，商品信息={}", productInfo);
+            log.debug("从ehcache中获取到的商品信息={}", productInfo);
         }
 
         // 3 若缓存都未命中，则需要从数据库重新读数据，并重建缓存
         if (productInfo == null) {
             // 模拟数据库查询返回的结果
-            String productInfoJSON = "{\"id\": 2, \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
+            String productInfoJSON = "{\"id\": " + productId + ", \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
             productInfo = JSONObject.parseObject(productInfoJSON, ProductInfo.class);
             // 放入缓存重建队列
             RebuildProductCacheQueue.getInstance().putProductInfo(productInfo);
@@ -71,25 +72,33 @@ public class CacheController {
         ShopInfo shopInfo;
         // 1 先查询Redis缓存
         shopInfo = cacheService.getShopInfoFromRedisCache(shopId);
-        log.debug("从redis中获取缓存，店铺信息={}", shopInfo);
+        log.debug("从redis中获取到的店铺信息={}", shopInfo);
 
         // 2 未命中Redis缓存，再查询本地ehcache缓存
         if (shopInfo == null) {
             shopInfo = cacheService.getShopInfoFromLocalCache(shopId);
-            log.debug("从ehcache中获取缓存，店铺信息={}", shopInfo);
+            log.debug("从ehcache中获取到的店铺信息={}", shopInfo);
         }
 
         // 3 若缓存都未命中，则需要从数据库重新读数据，并重建缓存
         if (shopInfo == null) {
             // 模拟数据库查询返回的结果
-            String shopInfoJSON = "{\"id\": 2, \"name\": \"老王的手机店\", \"level\": 5, \"goodCommentRate\":0.99, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
+            String shopInfoJSON = "{\"id\": " + shopId + ", \"name\": \"老王的手机店\", \"level\": 5, \"goodCommentRate\":0.99, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
             shopInfo = JSONObject.parseObject(shopInfoJSON, ShopInfo.class);
             // 放入缓存重建队列
             RebuildShopCacheQueue.getInstance().putShopInfo(shopInfo);
             log.debug("缓存都未命中，重建缓存，从数据库重新读取的店铺信息={}", shopInfo);
         }
-
         return shopInfo;
+    }
+
+
+    @ApiOperation(value = "启动缓存数据预热线程", notes = "预热每个storm task统计出来的topN热门数据")
+    @GetMapping("/prewarm")
+    public String prewarmCache() {
+        // 真实环境中应使用线程池
+        new Thread(new CachePrewarmTask()).start();
+        return "success";
     }
 
 }
