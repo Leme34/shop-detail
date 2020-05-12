@@ -87,9 +87,7 @@ public class WordCountTopology {
         }
 
         /**
-         * declareOutputFielfs这个方法
-         * <p>
-         * 很重要，这个方法是定义一个你发射出去的每个tuple中的每个field的名称是什么
+         * declareOutputFields这个方法很重要，这个方法是定义一个你发射出去的每个tuple中的每个field的名称是什么
          */
         public void declareOutputFields(OutputFieldsDeclarer declarer) {
             declarer.declare(new Fields("sentence"));
