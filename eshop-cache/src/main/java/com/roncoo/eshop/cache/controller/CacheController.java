@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 
+/**
+ * 商品详情页面url：http://192.168.11.102/product?requestPath=product&productId=1&shopId=1
+ */
 @Api(tags = "商品信息服务接口")
 @RestController
 @Slf4j
