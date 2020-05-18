@@ -465,7 +465,7 @@ HystrixCommandProperties.Setter()
 
 （3）circuitBreaker.sleepWindowInMilliseconds
 
-设置在短路之后，需要在多长时间内直接reject请求，然后在这段时间之后，再重新导holf-open状态，尝试允许请求通过以及自动恢复，默认值是5000毫秒
+设置在断路之后，需要在多长时间内直接reject请求，然后在这段时间之后再重新变为half-open状态，尝试允许请求通过以及自动恢复，默认值是5000毫秒
 
 HystrixCommandProperties.Setter()
    .withCircuitBreakerSleepWindowInMilliseconds(int value)

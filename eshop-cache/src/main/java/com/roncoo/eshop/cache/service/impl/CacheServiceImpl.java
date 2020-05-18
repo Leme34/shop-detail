@@ -1,6 +1,10 @@
 package com.roncoo.eshop.cache.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
+import com.roncoo.eshop.cache.hystrix.command.GetProductInfoFromRedisCacheCommand;
+import com.roncoo.eshop.cache.hystrix.command.GetShopInfoFromRedisCacheCommand;
+import com.roncoo.eshop.cache.hystrix.command.SaveProductInfo2RedisCacheCommand;
+import com.roncoo.eshop.cache.hystrix.command.SaveShopInfo2RedisCacheCommand;
 import com.roncoo.eshop.cache.model.ShopInfo;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,16 +88,14 @@ public class CacheServiceImpl implements CacheService {
      * 将商品信息保存到redis中
      */
     public void saveProductInfo2RedisCache(ProductInfo productInfo) {
-        String key = "product_info_" + productInfo.getId();
-        jedisCluster.set(key, JSONObject.toJSONString(productInfo));
+        new SaveProductInfo2RedisCacheCommand(productInfo).execute();
     }
 
     /**
      * 将店铺信息保存到redis中
      */
     public void saveShopInfo2RedisCache(ShopInfo shopInfo) {
-        String key = "shop_info_" + shopInfo.getId();
-        jedisCluster.set(key, JSONObject.toJSONString(shopInfo));
+        new SaveShopInfo2RedisCacheCommand(shopInfo).execute();
     }
 
 
@@ -101,20 +103,14 @@ public class CacheServiceImpl implements CacheService {
      * 从redis中获取商品信息
      */
     public ProductInfo getProductInfoFromRedisCache(Long productId) {
-        String key = "product_info_" + productId;
-        String json = jedisCluster.get(key);
-        return (StringUtils.isBlank(json) || StringUtils.equalsIgnoreCase(json, "null")) ? null :
-                JSONObject.parseObject(json, ProductInfo.class);
+        return new GetProductInfoFromRedisCacheCommand(productId).execute();
     }
 
     /**
      * 从redis中获取店铺信息
      */
     public ShopInfo getShopInfoFromRedisCache(Long shopId) {
-        String key = "shop_info_" + shopId;
-        String json = jedisCluster.get(key);
-        return (StringUtils.isBlank(json) || StringUtils.equalsIgnoreCase(json, "null")) ? null :
-                JSONObject.parseObject(json, ShopInfo.class);
+        return new GetShopInfoFromRedisCacheCommand(shopId).execute();
     }
 
 }

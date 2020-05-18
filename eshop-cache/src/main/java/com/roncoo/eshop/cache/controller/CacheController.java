@@ -1,6 +1,7 @@
 package com.roncoo.eshop.cache.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import com.roncoo.eshop.cache.hystrix.command.GetProductInfoCommand;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.model.ShopInfo;
 import com.roncoo.eshop.cache.prewarm.CachePrewarmTask;
@@ -59,8 +60,7 @@ public class CacheController {
         // 3 若缓存都未命中，则需要从数据库重新读数据，并重建缓存
         if (productInfo == null) {
             // 模拟数据库查询返回的结果
-            String productInfoJSON = "{\"id\": " + productId + ", \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:00:00\"}";
-            productInfo = JSONObject.parseObject(productInfoJSON, ProductInfo.class);
+            new GetProductInfoCommand(productId).execute();
             // 放入缓存重建队列
             RebuildProductCacheQueue.getInstance().putProductInfo(productInfo);
             log.debug("缓存都未命中，重建缓存，从数据库重新读取的商品信息={}", productInfo);
