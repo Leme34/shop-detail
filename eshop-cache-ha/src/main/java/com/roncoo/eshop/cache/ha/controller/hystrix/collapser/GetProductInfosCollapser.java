@@ -12,7 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * 请求合并技术（request collapser）
  * 用请求合并技术，将多个请求合并起来，可以减少高并发访问下需要使用的线程数量以及网络连接数量，这都是hystrix自动进行的
- * 其实对于高并发的访问来说，是可以提升性能的
+ * 其实对于高并发的查询请求来说，是可以提升性能的
+ * 本质就是把设置的时间窗口内的请求（收集）合并为一个批量请求命令（批量查询）
  */
 @Slf4j
 public class GetProductInfosCollapser extends HystrixCollapser<List<ProductInfo>, ProductInfo, Long> {
@@ -20,6 +21,15 @@ public class GetProductInfosCollapser extends HystrixCollapser<List<ProductInfo>
     private Long productId;
 
     public GetProductInfosCollapser(Long productId) {
+        super(Setter
+                .withCollapserKey(HystrixCollapserKey.Factory.asKey("getProductInfosCollapser"))
+                .andCollapserPropertiesDefaults(
+                        HystrixCollapserProperties.Setter()
+                                .withTimerDelayInMilliseconds(10)   //合并10ms内的请求
+                                .withMaxRequestsInBatch(200)        //单次最多合并200个 hystrix command
+                )
+                .andScope(Scope.GLOBAL)
+        );
         this.productId = productId;
     }
 
